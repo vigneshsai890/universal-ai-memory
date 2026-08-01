@@ -1,0 +1,251 @@
+openapi: 3.1.0
+info:
+  title: Universal AI Memory API
+  version: 0.2.0
+  description: >-
+    Local-first encrypted payload storage. Backend-visible vectors, IDs, timestamps,
+    and blind indexes are authenticated but are not encrypted.
+paths:
+  /store:
+    post:
+      operationId: storeMemory
+      summary: Encrypt and store a memory
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StoreRequest' }
+      responses:
+        '201':
+          description: Memory stored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StoreResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/LimitExceeded' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/CorruptRecord' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+  /retrieve:
+    post:
+      operationId: retrieveMemories
+      summary: Retrieve by ID or authenticated event chronology
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetrieveRequest' }
+      responses:
+        '200':
+          description: Decrypted memories
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemoriesResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/LimitExceeded' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/CorruptRecord' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+  /search:
+    post:
+      operationId: searchMemories
+      summary: Search using authenticated clear vectors
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SearchRequest' }
+      responses:
+        '200':
+          description: Memories ordered by cosine similarity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemoriesResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/LimitExceeded' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/CorruptRecord' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+  /forget:
+    post:
+      operationId: forgetMemories
+      summary: Delete by ID or authenticated blind entity indexes
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ForgetRequest' }
+      responses:
+        '200':
+          description: Matching authenticated memories deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ForgetResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/LimitExceeded' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/CorruptRecord' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API key bearer credential; authorization is capability-scoped.
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer credential
+      headers:
+        WWW-Authenticate: { schema: { type: string } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Credential lacks the required capability
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Memory identifier already exists
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    LimitExceeded:
+      description: A manager-level resource limit was exceeded
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    CorruptRecord:
+      description: A stored record is malformed or failed authentication
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotConfigured:
+      description: Memory manager is not configured
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail: { type: string }
+    StoreRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 65536 }
+        metadata:
+          type: object
+          additionalProperties: true
+          default: {}
+          description: >-
+            Strict finite JSON with string object keys; manager also enforces canonical
+            UTF-8 byte and nesting-depth limits before embedding.
+        source: { anyOf: [{ type: string, minLength: 1, maxLength: 2048 }, { type: 'null' }], default: null }
+        event_timestamp: { anyOf: [{ type: string, format: date-time }, { type: 'null' }], default: null }
+        memory_id: { anyOf: [{ type: string, minLength: 1, maxLength: 256 }, { type: 'null' }], default: null }
+    StoreResponse:
+      type: object
+      additionalProperties: false
+      required: [memory_id, source, event_timestamp, entities, created_at]
+      properties:
+        memory_id: { type: string }
+        source: { anyOf: [{ type: string }, { type: 'null' }] }
+        event_timestamp: { type: string, format: date-time }
+        entities:
+          type: array
+          maxItems: 64
+          items: { type: string, minLength: 1, maxLength: 256 }
+        created_at: { type: string, format: date-time }
+    RetrieveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        memory_id: { anyOf: [{ type: string, minLength: 1, maxLength: 256 }, { type: 'null' }], default: null }
+        entities: { $ref: '#/components/schemas/EntityList' }
+        limit: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        newest_first: { type: boolean, default: true }
+      allOf:
+        - not:
+            required: [memory_id, entities]
+            properties:
+              entities: { minItems: 1 }
+      description: memory_id and a non-empty entities selector cannot be combined.
+    SearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query: { type: string, minLength: 1, maxLength: 65536 }
+        entities: { $ref: '#/components/schemas/EntityList' }
+        limit: { type: integer, minimum: 1, maximum: 100, default: 10 }
+    ForgetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        memory_id: { anyOf: [{ type: string, minLength: 1, maxLength: 256 }, { type: 'null' }], default: null }
+        entities: { $ref: '#/components/schemas/EntityList' }
+      oneOf:
+        - required: [memory_id]
+          properties:
+            memory_id: { type: string, minLength: 1, maxLength: 256 }
+            entities: { type: array, maxItems: 0 }
+        - required: [entities]
+          properties:
+            entities: { $ref: '#/components/schemas/NonEmptyEntityList' }
+      description: Exactly one non-empty selector is required.
+    EntityList:
+      type: array
+      maxItems: 64
+      default: []
+      items: { type: string, minLength: 1, maxLength: 256 }
+    NonEmptyEntityList:
+      type: array
+      minItems: 1
+      maxItems: 64
+      items: { type: string, minLength: 1, maxLength: 256 }
+    Memory:
+      type: object
+      additionalProperties: false
+      required: [memory_id, content, metadata, source, event_timestamp, entities, created_at]
+      properties:
+        memory_id: { type: string }
+        content: { type: string }
+        metadata: { type: object, additionalProperties: true }
+        source: { anyOf: [{ type: string }, { type: 'null' }] }
+        event_timestamp: { type: string, format: date-time }
+        entities: { $ref: '#/components/schemas/EntityList' }
+        created_at: { type: string, format: date-time }
+        score: { anyOf: [{ type: number }, { type: 'null' }], default: null }
+    MemoriesResponse:
+      type: object
+      additionalProperties: false
+      required: [memories]
+      properties:
+        memories:
+          type: array
+          items: { $ref: '#/components/schemas/Memory' }
+    ForgetResponse:
+      type: object
+      additionalProperties: false
+      required: [deleted]
+      properties:
+        deleted: { type: integer, minimum: 0 }
