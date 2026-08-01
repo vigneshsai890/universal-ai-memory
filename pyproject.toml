@@ -9,7 +9,7 @@ description = "Authenticated local-first memory with encrypted payloads and clea
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "cryptography==45.0.6",
-  "fastapi==0.116.1",
+  "fastapi==0.140.13",
   "mcp==1.12.4",
   "pydantic==2.11.7",
   "uvicorn==0.35.0",
