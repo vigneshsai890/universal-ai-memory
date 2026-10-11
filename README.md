@@ -1,3 +1,45 @@
+<div align="center">
+
+<img src="docs/architecture.svg" alt="Universal AI Memory architecture map" width="100%" />
+
+</div>
+
+# Universal AI Memory
+
+> Local-first memory with encrypted payloads and authenticated search metadata.
+
+A Python reference service that exposes API and MCP entry points while keeping storage, embedding, entity extraction and authorization behind injected adapters.
+
+<div align="center">
+
+`Python 3.12 · FastAPI · Pydantic · MCP` &nbsp;·&nbsp; `store · retrieve · search · forget`
+
+</div>
+
+## `01 / SYSTEM CARD`
+
+- **Primary boundary:** `bearer capability → API / MCP → manager → adapters / vector store`
+- **Documentation stance:** architecture and presentation only; application source is intentionally untouched.
+- **Visual language:** Y2K terminal grid, brutalist labels, maximalist contrast, readable static SVG fallback.
+
+## `02 / ARCHITECTURE`
+
+The map above is a compact view of the repository's visible runtime boundary. It is designed to answer three questions quickly: where input enters, where policy or domain logic lives, and where external side effects leave the system.
+
+![Architecture map for Universal AI Memory](docs/architecture.svg)
+
+## `03 / DESIGN NOTES`
+
+- Private payload fields are encrypted; backend-visible vectors, IDs, timestamps and blind indexes remain separate concerns.
+- The included backend and deterministic embedder are development implementations, as documented by the project.
+
+This upgrade adds documentation assets only. It does not change source files, dependency manifests, tests, workflows or runtime configuration.
+
+## `04 / EXISTING PROJECT DOCUMENTATION`
+
+<details open>
+<summary>Read the original project notes</summary>
+
 # Universal AI Memory starter
 
 Python 3.12 local-first reference service with injected embedding, entity extraction, authorization, and vector persistence adapters. Private payload fields use AES-256-GCM; normalized entity labels are represented in the backend as HMAC-SHA-256 blind indexes. The included backend and deterministic embedder are development implementations.
@@ -61,3 +103,6 @@ ID and entity selectors cannot be combined. Delete-by-entity authenticates compl
 - The API uses bearer authentication, not transport encryption. Keep the default loopback binding or add trusted TLS before crossing a network boundary.
 - The in-memory backend loses records on restart and is not suitable for multi-process or production deployment. Production adapters also need durable atomic capacity enforcement, key rotation, auditing, and operational controls.
 - The service does not intentionally log plaintext or secrets. Decrypted API/MCP responses are returned only after capability checks.
+
+</details>
+
